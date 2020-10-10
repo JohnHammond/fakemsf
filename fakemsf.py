@@ -1,11 +1,18 @@
+#!/usr/bin/env python
+
 import cmd2
 import time
 import sys
+import os
 from colorama import *
 from glob import glob
 import random
+from pprint import pprint
 
 def load_logos():
+    """
+    Load and map color to the default logos that msfconsole uses
+    """
 
     color_map = {
     
@@ -32,15 +39,50 @@ def load_logos():
     return logos
 
 
+def load_modules():
+    modules = {}
+
+    for root, dirs, files in os.walk("modules"):
+        for fname in files:
+            fpath = "/".join(os.path.join(root, fname).split("/")[1:])
+            group = fpath.split("/")[0]
+            if group not in modules:
+                modules[group] = []
+            if fpath.endswith(".rb"):
+                modules[group].append(fpath)
+
+    return modules
+
+
 class App(cmd2.Cmd):
 
     def __init__(self):
-
+        """
+        Display a msfconsole prompt
+        """
         super().__init__()
         self.prompt = f"{cmd2.ansi.UNDERLINE_ENABLE}msf6{cmd2.ansi.UNDERLINE_DISABLE} > "
         pass
 
+
+    def perror(self, msg = '', *, end: str = '\n', apply_style: bool = True):
+        """
+        Display high-level error messages in a similar way that msfconsole does
+        """
+        default_error = "is not a recognized command, alias, or macro"
+        parse_error = "No closing quotation"
+        if default_error in msg:
+            print(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Unknown command: {msg.split()[0]}")
+        elif parse_error in msg:
+            print(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Parse error: Unmatched double quote")
+        else:
+            sys.stderr.write(msg + end)
+
+
     def sigint_handler(self, signum: int, frame):
+        """
+        Handle Ctrl+C interrupts like msfconsole does
+        """
         self.async_alert(f"{self.prompt}Interrupt: use the 'exit' command to quit")
 
 
@@ -49,6 +91,9 @@ class App(cmd2.Cmd):
 
 
 def startup():
+    """
+    Start in a similar fashion to msfconsole
+    """
     start = "[*] Starting the Metasploit Framework console..."
     animations = "|/-\\"
     for i in range(len(animations)*5):
@@ -59,10 +104,18 @@ def startup():
     print(random.choice(load_logos()))
     print(Fore.RESET + Style.NORMAL)
 
+    modules = load_modules()
+    print(f"       =[ {Fore.YELLOW}metasploit v6.0.10-dev-7be36a772d{Fore.RESET}               ]")
+    print(f"+ -- --=[ {len(modules['exploits'])} exploits - {len(modules['auxiliary'])} auxiliary - {len(modules['post'])} post       ]")
+    print(f"+ -- --=[ {len(modules['payloads'])} payloads - {len(modules['encoders'])} encoders - {len(modules['nops'])} nops            ]")
+    print(f"+ -- --=[ {len(modules['evasion'])} evasion                                       ]")
+    print()
+    print("Metasploit tip:")
+    print()
+
+
 
 startup()
-
 app = App()
 app.cmdloop()
-# for logo in load_logos():
-#     print(logo)
+
