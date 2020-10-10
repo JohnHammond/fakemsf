@@ -22,7 +22,7 @@ def load_logos():
     }
 
     logos = []
-    fnames = glob("logos/*.txt")
+    fnames = glob("data/logos/*.txt")
     for fname in fnames:
         with open(fname) as h:
             logo = h.read()
