@@ -4,6 +4,8 @@ import cmd2
 import time
 import sys
 import os
+import shutil
+import subprocess
 from colorama import *
 from glob import glob
 import random
@@ -35,9 +37,24 @@ def load_logos():
             logo = h.read()
             for color in color_map.keys():
                 logo = logo.replace(color, color_map[color])
+            new_logo = []
+            for line in logo.split("\n"):
+                new_logo.append(f"{Fore.CYAN}{line}{Fore.RESET}")
+            logo = "\n".join(new_logo)
         logos.append(logo)
     return logos
 
+
+def load_tips():
+
+    tips = []
+    with open("data/tips.txt") as h:
+        for tip in h:
+            tip = tip.strip()
+            tip = tip.replace("#{highlight('", Fore.GREEN)
+            tip = tip.replace("')}", Fore.RESET)
+            tips.append(tip)
+    return tips
 
 def load_modules():
     modules = {}
@@ -62,8 +79,28 @@ class App(cmd2.Cmd):
         """
         super().__init__()
         self.prompt = f"{cmd2.ansi.UNDERLINE_ENABLE}msf6{cmd2.ansi.UNDERLINE_DISABLE} > "
-        pass
 
+
+    def default(self, statement):
+        """
+        Handle regular shell commands appropriately
+        """
+        if ( shutil.which(statement.command) ):
+            self.stdout.write(f"{Fore.BLUE+Style.BRIGHT}[*]{Fore.RESET+Style.NORMAL} exec: {statement.raw}\n\n")
+            p = subprocess.Popen(statement.raw, stderr = subprocess.STDOUT, stdout = subprocess.PIPE, shell=True)
+            self.stdout.write(p.stdout.read().decode("latin-1"))
+        elif statement.command == "cd":
+            try:
+                if ( statement.args == "" ):
+                    os.chdir(os.getenv("HOME"))
+                else:
+                    os.chdir(statement.args)
+            except FileNotFoundError:
+                self.perror(f"The specified path does not exist")
+        else:
+            self.perror(f"{statement.command} is not a recognized command, alias, or macro")
+
+        return False
 
     def perror(self, msg = '', *, end: str = '\n', apply_style: bool = True):
         """
@@ -71,12 +108,13 @@ class App(cmd2.Cmd):
         """
         default_error = "is not a recognized command, alias, or macro"
         parse_error = "No closing quotation"
+
         if default_error in msg:
-            print(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Unknown command: {msg.split()[0]}")
+            sys.stderr.write(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Unknown command: {msg.split()[0]}\n")
         elif parse_error in msg:
-            print(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Parse error: Unmatched double quote")
+            sys.stderr.write(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} Parse error: Unmatched double quote\n")
         else:
-            sys.stderr.write(msg + end)
+            sys.stderr.write(f"{Style.BRIGHT+Fore.RED}[-]{Style.NORMAL+Fore.RESET} {msg}" + end)
 
 
     def sigint_handler(self, signum: int, frame):
@@ -110,12 +148,12 @@ def startup():
     print(f"+ -- --=[ {len(modules['payloads'])} payloads - {len(modules['encoders'])} encoders - {len(modules['nops'])} nops            ]")
     print(f"+ -- --=[ {len(modules['evasion'])} evasion                                       ]")
     print()
-    print("Metasploit tip:")
+    print("Metasploit tip: " + random.choice(load_tips()))
     print()
 
 
 
-startup()
+# startup()
 app = App()
 app.cmdloop()
 
